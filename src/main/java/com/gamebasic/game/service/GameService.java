@@ -1,8 +1,6 @@
 package com.gamebasic.game.service;
 
-import com.gamebasic.game.dto.CreateRequest;
-import com.gamebasic.game.dto.GameDetailResponse;
-import com.gamebasic.game.dto.ProgressRequest;
+import com.gamebasic.game.dto.*;
 import com.gamebasic.game.entity.Game;
 import com.gamebasic.game.repository.GameRepository;
 import com.gamebasic.runcard.dto.CardResponse;
@@ -10,7 +8,6 @@ import com.gamebasic.runcard.dto.RunCardRequest;
 import com.gamebasic.runcard.entity.RunCard;
 import com.gamebasic.runcard.repository.RunCardRepository;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,8 +60,8 @@ public class GameService {
     public GameDetailResponse updateProgress(Long gameId, ProgressRequest request) {
         Game game = findGame(gameId);
         game.updateProgress(
-            request.getCurrentHp(),
             request.getCurrentFloor(),
+            request.getCurrentHp(),
             request.getPhase(),
             request.getStatus()
         );
@@ -79,8 +76,8 @@ public class GameService {
         return new GameDetailResponse(
             game.getId(),
             game.getPlayerName(),
-            game.getCurrentHp(),
             game.getCurrentFloor(),
+            game.getCurrentHp(),
             game.getPhase(),
             game.getStatus(),
             deck
@@ -88,15 +85,72 @@ public class GameService {
     }
 
     // TODO (Lv 7): 게임 목록 조회. 주석을 풀고 구현하세요.
-    // @Transactional(readOnly = true)
-    // public List<GameSummaryResponse> getGames() {
-    // }
+    @Transactional(readOnly = true)
+    public List<GameSummaryResponse> getGames() {
+        List<Game> games =gameRepository.findAllByOrderByIdDesc();
+        List<GameSummaryResponse> result = new ArrayList<>();
+        for (Game game : games){
+            result.add(new GameSummaryResponse(
+                    game.getId(),
+                    game.getPlayerName(),
+                    game.getCurrentFloor(),
+                    game.getCurrentHp(),
+                    game.getPhase(),
+                    game.getStatus()
+            ));
+        }
+        return result;
+    }
 
     // TODO (Lv 7): 게임 상세 조회. 주석을 풀고 구현하세요.
-    // @Transactional(readOnly = true)
-    // public GameDetailResponse getGame(Long gameId) {
-    // }
+    @Transactional(readOnly = true)
+    public GameDetailResponse getGame(Long gameId) {
+        Game game =findGame(gameId);
+        List<RunCard> cards = runCardRepository.findAllByGameOrderByIdAsc(game);
+        List<CardResponse> deck = new ArrayList<>();
+        for (RunCard card : cards) {
+            deck.add(new CardResponse(card.getId(), card.getCardType(), card.getAcquiredFloor()));
+        }
+        return new GameDetailResponse(
+                game.getId(),
+                game.getPlayerName(),
+                game.getCurrentFloor(),
+                game.getCurrentHp(),
+                game.getPhase(),
+                game.getStatus(),
+                deck
+        );
+    }
 
+    private GameDetailResponse toDetailResponse(Game game){
+        List<RunCard> cards = runCardRepository.findAllByGameOrderByIdAsc(game);
+        List<CardResponse> deck = new ArrayList<>();
+        for (RunCard card : cards) {
+            deck.add(new CardResponse(card.getId(), card.getCardType(), card.getAcquiredFloor()));
+        }
+        return new GameDetailResponse(
+                game.getId(),
+                game.getPlayerName(),
+                game.getCurrentFloor(),
+                game.getCurrentHp(),
+                game.getPhase(),
+                game.getStatus(),
+                deck
+        );
+    }
+
+    @Transactional
+    public void renameGame(Long gameId, RenameRequest request){
+        Game game = findGame(gameId);
+        game.rename((request.getPlayerName()));
+    }
+
+    @Transactional
+    public void deleteGame(Long gameId){
+        Game game = findGame(gameId);
+        runCardRepository.deleteAllByGame(game);
+        gameRepository.delete(game);
+    }
     // TODO (Lv 8): 플레이어 이름 변경 — 변경 감지로 수정
     // TODO (Lv 8): 게임 삭제
 }
